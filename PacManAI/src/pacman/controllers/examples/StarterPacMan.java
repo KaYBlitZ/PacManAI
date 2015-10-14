@@ -1,9 +1,13 @@
 package pacman.controllers.examples;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedList;
 import java.util.Random;
 
 import pacman.controllers.Controller;
+import pacman.controllers.examples.move.Node;
+import pacman.controllers.examples.move.Tree;
 import pacman.game.Constants.GHOST;
 import pacman.game.Constants.MOVE;
 import pacman.game.Game;
@@ -19,14 +23,19 @@ import pacman.game.Game;
  * 3. Go to the nearest pill/power pill
  */
 public class StarterPacMan extends Controller<MOVE> {
-	private static final int INVALID = -1000;
-	private static final int MIN_GHOST_DISTANCE = 10;
+	private static final int INVALID_MOVE = -10000;
+	private static final int MIN_GHOST_DISTANCE = 30;
 
 	public MOVE getMove(Game game, long timeDue) {
-		return getMoveBFS(game);
+		return getMoveBFS(game, 5);
 	}
 	
-	MOVE getMoveBFS(Game game) {
+	MOVE getMoveBFS(Game game, int depth) {
+		Tree tree = new Tree(depth);
+		
+		LinkedList<Node> nodes = new LinkedList<Node>();
+		nodes.add(tree.getHeadNode());
+		
 		// assume ghosts are moving in same direction
 		EnumMap<GHOST, MOVE> ghostMoves = new EnumMap<GHOST, MOVE>(GHOST.class);
 		ghostMoves.put(GHOST.BLINKY, game.getGhostLastMoveMade(GHOST.BLINKY));
@@ -34,33 +43,61 @@ public class StarterPacMan extends Controller<MOVE> {
 		ghostMoves.put(GHOST.PINKY, game.getGhostLastMoveMade(GHOST.PINKY));
 		ghostMoves.put(GHOST.SUE, game.getGhostLastMoveMade(GHOST.SUE));
 		
-		int leftValue = INVALID;
-		int rightValue = INVALID;
-		int upValue = INVALID;
-		int downValue = INVALID;
+		int leftValue = INVALID_MOVE;
+		int rightValue = INVALID_MOVE;
+		int upValue = INVALID_MOVE;
+		int downValue = INVALID_MOVE;
 		
-		for (MOVE move : game.getPossibleMoves(game.getPacmanCurrentNodeIndex())) {
-			Game copy = game.copy();
-			// each advanceGame is only for 1/25th of a second since the DELAY is 40 ms
-			// 1000 ms / 40 ms = 25 updates/advances per second
-			// we should set the num iterations in the loop to move pacman for that length of time
-			// ie: i < 25 would mean moving in that direction for 1 second
-			if (move == MOVE.LEFT) {
-				for (int i = 0; i < 8; i++)
-					copy.advanceGame(MOVE.LEFT, ghostMoves);
-				leftValue = evaluateGameState(copy);
-			} else if (move == MOVE.RIGHT) {
-				for (int i = 0; i < 8; i++)
-					copy.advanceGame(MOVE.RIGHT, ghostMoves);
-				rightValue = evaluateGameState(copy);
-			} else if (move == MOVE.DOWN) {
-				for (int i = 0; i < 8; i++)
-					copy.advanceGame(MOVE.DOWN, ghostMoves);
-				downValue = evaluateGameState(copy);
-			} else if (move == MOVE.UP) {
-				for (int i = 0; i < 8; i++)
-					copy.advanceGame(MOVE.UP, ghostMoves);
-				upValue = evaluateGameState(copy);
+		while(!nodes.isEmpty()) {
+			Node node = nodes.removeFirst();
+			if (node.getMove() != MOVE.NEUTRAL) { // regular Node
+				// set gameState and advance move based on current node
+				Game gameState = node.getPredecessor().getGameState().copy();
+				gameState.advanceGame(node.getMove(), ghostMoves);
+				node.setGameState(gameState);
+			} else { // must be head node
+				// set the current game state
+				node.setGameState(game);
+			}
+			if (node.getNeighbors() == null) {
+				// end of tree branch
+				int value = evaluateGameState(node.getGameState());
+				// get head node move type
+				Node nodeType = node.getPredecessor();
+				while (nodeType.getPredecessor().getMove() != MOVE.NEUTRAL) {
+					nodeType = nodeType.getPredecessor();
+				}
+				switch (nodeType.getMove()) {
+				case LEFT:
+					if (value > leftValue) leftValue = value;
+					break;
+				case RIGHT:
+					if (value > rightValue) rightValue = value;
+					break;
+				case UP:
+					if (value > upValue) upValue = value;
+					break;
+				case DOWN:
+					if (value > downValue) downValue = value;
+					break;
+				case NEUTRAL:
+					break;
+				}
+			} else { // head node
+				// prune invalid moves (neighbors)
+				MOVE[] moves = game.getPossibleMoves(game.getPacmanCurrentNodeIndex());
+				ArrayList<Node> neighbors = node.getNeighbors();
+				for (MOVE move : moves) {
+					if (move == MOVE.LEFT) {
+						nodes.add(neighbors.get(0));
+					} else if (move == MOVE.RIGHT) {
+						nodes.add(neighbors.get(1));
+					} else if (move == MOVE.UP) {
+						nodes.add(neighbors.get(2));
+					} else if (move == MOVE.DOWN) {
+						nodes.add(neighbors.get(3));
+					}
+				}
 			}
 		}
 		
@@ -69,7 +106,7 @@ public class StarterPacMan extends Controller<MOVE> {
 		Random rand = new Random();
 		MOVE bestMove = MOVE.LEFT;
 		int bestValue = Integer.MIN_VALUE;
-		if (leftValue != INVALID) {
+		if (leftValue != INVALID_MOVE) {
 			if (leftValue > bestValue) {
 				bestMove = MOVE.LEFT;
 				bestValue = leftValue;
@@ -80,7 +117,7 @@ public class StarterPacMan extends Controller<MOVE> {
 				}
 			}
 		}
-		if (rightValue != INVALID) {
+		if (rightValue != INVALID_MOVE) {
 			if (rightValue > bestValue) {
 				bestMove = MOVE.RIGHT;
 				bestValue = rightValue;
@@ -91,7 +128,7 @@ public class StarterPacMan extends Controller<MOVE> {
 				}
 			}
 		}
-		if (upValue != INVALID) {
+		if (upValue != INVALID_MOVE) {
 			if (upValue > bestValue) {
 				bestMove = MOVE.UP;
 				bestValue = upValue;
@@ -102,7 +139,7 @@ public class StarterPacMan extends Controller<MOVE> {
 				}
 			}
 		}
-		if (downValue != INVALID) {
+		if (downValue != INVALID_MOVE) {
 			if (downValue > bestValue) {
 				bestMove = MOVE.DOWN;
 				bestValue = downValue;
