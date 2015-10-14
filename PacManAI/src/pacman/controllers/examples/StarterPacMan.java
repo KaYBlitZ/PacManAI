@@ -1,10 +1,9 @@
 package pacman.controllers.examples;
 
-import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.Random;
 
 import pacman.controllers.Controller;
-import pacman.game.Constants.DM;
 import pacman.game.Constants.GHOST;
 import pacman.game.Constants.MOVE;
 import pacman.game.Game;
@@ -20,7 +19,8 @@ import pacman.game.Game;
  * 3. Go to the nearest pill/power pill
  */
 public class StarterPacMan extends Controller<MOVE> {
-	private static final int INITIAL_VALUE = -1000;
+	private static final int INVALID = -1000;
+	private static final int MIN_GHOST_DISTANCE = 10;
 
 	public MOVE getMove(Game game, long timeDue) {
 		return getMoveBFS(game);
@@ -34,47 +34,84 @@ public class StarterPacMan extends Controller<MOVE> {
 		ghostMoves.put(GHOST.PINKY, game.getGhostLastMoveMade(GHOST.PINKY));
 		ghostMoves.put(GHOST.SUE, game.getGhostLastMoveMade(GHOST.SUE));
 		
-		int leftValue = INITIAL_VALUE;
-		int rightValue = INITIAL_VALUE;
-		int upValue = INITIAL_VALUE;
-		int downValue = INITIAL_VALUE;
+		int leftValue = INVALID;
+		int rightValue = INVALID;
+		int upValue = INVALID;
+		int downValue = INVALID;
 		
 		for (MOVE move : game.getPossibleMoves(game.getPacmanCurrentNodeIndex())) {
 			Game copy = game.copy();
+			// each advanceGame is only for 1/25th of a second since the DELAY is 40 ms
+			// 1000 ms / 40 ms = 25 updates/advances per second
+			// we should set the num iterations in the loop to move pacman for that length of time
+			// ie: i < 25 would mean moving in that direction for 1 second
 			if (move == MOVE.LEFT) {
-				for (int i = 0; i < 8; i++) copy.advanceGame(MOVE.LEFT, ghostMoves);
-				leftValue = evaluateGameState(copy, game.getNumberOfActivePills(), game.getNumberOfActivePowerPills());
+				for (int i = 0; i < 8; i++)
+					copy.advanceGame(MOVE.LEFT, ghostMoves);
+				leftValue = evaluateGameState(copy);
 			} else if (move == MOVE.RIGHT) {
-				for (int i = 0; i < 8; i++) copy.advanceGame(MOVE.RIGHT, ghostMoves);
-				rightValue = evaluateGameState(copy, game.getNumberOfActivePills(), game.getNumberOfActivePowerPills());
+				for (int i = 0; i < 8; i++)
+					copy.advanceGame(MOVE.RIGHT, ghostMoves);
+				rightValue = evaluateGameState(copy);
 			} else if (move == MOVE.DOWN) {
-				for (int i = 0; i < 8; i++) copy.advanceGame(MOVE.DOWN, ghostMoves);
-				downValue = evaluateGameState(copy, game.getNumberOfActivePills(), game.getNumberOfActivePowerPills());
+				for (int i = 0; i < 8; i++)
+					copy.advanceGame(MOVE.DOWN, ghostMoves);
+				downValue = evaluateGameState(copy);
 			} else if (move == MOVE.UP) {
-				for (int i = 0; i < 8; i++) copy.advanceGame(MOVE.UP, ghostMoves);
-				upValue = evaluateGameState(copy, game.getNumberOfActivePills(), game.getNumberOfActivePowerPills());
+				for (int i = 0; i < 8; i++)
+					copy.advanceGame(MOVE.UP, ghostMoves);
+				upValue = evaluateGameState(copy);
 			}
 		}
 		
-		//System.out.println(String.format("%d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
+		System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
 		
-		MOVE bestMove = null;
-		int bestValue = -10000;
-		if (leftValue != INITIAL_VALUE && leftValue > bestValue) {
-			bestMove = MOVE.LEFT;
-			bestValue = leftValue;
+		Random rand = new Random();
+		MOVE bestMove = MOVE.LEFT;
+		int bestValue = Integer.MIN_VALUE;
+		if (leftValue != INVALID) {
+			if (leftValue > bestValue) {
+				bestMove = MOVE.LEFT;
+				bestValue = leftValue;
+			} else if (leftValue == bestValue) {
+				if (rand.nextInt(2) == 0) {
+					bestMove = MOVE.LEFT;
+					bestValue = leftValue;
+				}
+			}
 		}
-		if (rightValue != INITIAL_VALUE && rightValue > bestValue) {
-			bestMove = MOVE.RIGHT;
-			bestValue = rightValue;
+		if (rightValue != INVALID) {
+			if (rightValue > bestValue) {
+				bestMove = MOVE.RIGHT;
+				bestValue = rightValue;
+			} else if (rightValue == bestValue) {
+				if (rand.nextInt(2) == 0) {
+					bestMove = MOVE.RIGHT;
+					bestValue = rightValue;
+				}
+			}
 		}
-		if (upValue != INITIAL_VALUE && upValue > bestValue) {
-			bestMove = MOVE.UP;
-			bestValue = upValue;
+		if (upValue != INVALID) {
+			if (upValue > bestValue) {
+				bestMove = MOVE.UP;
+				bestValue = upValue;
+			} else if (upValue == bestValue) {
+				if (rand.nextInt(2) == 0) {
+					bestMove = MOVE.UP;
+					bestValue = upValue;
+				}
+			}
 		}
-		if (downValue != INITIAL_VALUE && downValue > bestValue) {
-			bestMove = MOVE.DOWN;
-			bestValue = downValue;
+		if (downValue != INVALID) {
+			if (downValue > bestValue) {
+				bestMove = MOVE.DOWN;
+				bestValue = downValue;
+			} else if (downValue == bestValue) {
+				if (rand.nextInt(2) == 0) {
+					bestMove = MOVE.DOWN;
+					bestValue = downValue;
+				}
+			}
 		}
 		
 		return bestMove;
@@ -88,7 +125,8 @@ public class StarterPacMan extends Controller<MOVE> {
 	 * closer to nearest edible ghost
 	 * closer to nearest pill/power pill
 	 */
-	int evaluateGameState(Game gameState, int currentNumPills, int currentNumPowerPills) {
+	int evaluateGameState(Game gameState) {
+		int heuristic = 0;
 		int pacmanIndex = gameState.getPacmanCurrentNodeIndex();
 		int[] ghostIndices = new int[] {
 			gameState.getGhostCurrentNodeIndex(GHOST.BLINKY),
@@ -98,10 +136,35 @@ public class StarterPacMan extends Controller<MOVE> {
 		};
 		
 		int shortestGhostDistance = Integer.MAX_VALUE;
+		GHOST nearestGhost = null;
 		for (int ghostIndex : ghostIndices) {
 			int distance = gameState.getShortestPathDistance(pacmanIndex, ghostIndex);
 			if (distance < shortestGhostDistance) {
 				shortestGhostDistance = distance;
+				switch (ghostIndex) {
+				case 0:
+					nearestGhost = GHOST.BLINKY;
+					break;
+				case 1:
+					nearestGhost = GHOST.INKY;
+					break;
+				case 2:
+					nearestGhost = GHOST.PINKY;
+					break;
+				case 3:
+					nearestGhost = GHOST.SUE;
+					break;
+				}
+			}
+		}
+		
+		if (shortestGhostDistance < MIN_GHOST_DISTANCE) {
+			if (nearestGhost != null) {
+				if (gameState.isGhostEdible(nearestGhost)) {
+					heuristic += 200;
+				} else {
+					heuristic += -200;
+				}
 			}
 		}
 		
@@ -119,9 +182,8 @@ public class StarterPacMan extends Controller<MOVE> {
 			}
 		}
 		
-		return gameState.getScore() + 
-				100 * gameState.getPacmanNumberOfLivesRemaining() +
-				(500 - shortestPillDistance) + 
-				shortestGhostDistance;
+		return heuristic + gameState.getScore() + 
+				2000 * gameState.getPacmanNumberOfLivesRemaining() +
+				(300 - shortestPillDistance);
 	}
 }
