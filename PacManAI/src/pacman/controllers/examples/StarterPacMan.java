@@ -8,6 +8,7 @@ import java.util.Random;
 import pacman.controllers.Controller;
 import pacman.controllers.examples.move.Node;
 import pacman.controllers.examples.move.Tree;
+import pacman.game.Constants.DM;
 import pacman.game.Constants.GHOST;
 import pacman.game.Constants.MOVE;
 import pacman.game.Game;
@@ -23,11 +24,13 @@ import pacman.game.Game;
  * 3. Go to the nearest pill/power pill
  */
 public class StarterPacMan extends Controller<MOVE> {
-	private static final int INVALID_MOVE = -10000;
-	private static final int MIN_GHOST_DISTANCE = 30;
-
+	// the min ghost distance needs to be balanced
+	// too large and pacman will think its trapped when its not and just jiggle in place
+	private static final int MIN_GHOST_DISTANCE = 20;
+	private static final int MIN_EDIBLE_GHOST_DISTANCE = 100;
+	
 	public MOVE getMove(Game game, long timeDue) {
-		return getMoveBFS(game, 5);
+		return getMoveBFS(game, 8);
 	}
 	
 	MOVE getMoveBFS(Game game, int depth) {
@@ -38,15 +41,15 @@ public class StarterPacMan extends Controller<MOVE> {
 		
 		// assume ghosts are moving in same direction
 		EnumMap<GHOST, MOVE> ghostMoves = new EnumMap<GHOST, MOVE>(GHOST.class);
-		ghostMoves.put(GHOST.BLINKY, game.getGhostLastMoveMade(GHOST.BLINKY));
-		ghostMoves.put(GHOST.INKY, game.getGhostLastMoveMade(GHOST.INKY));
-		ghostMoves.put(GHOST.PINKY, game.getGhostLastMoveMade(GHOST.PINKY));
-		ghostMoves.put(GHOST.SUE, game.getGhostLastMoveMade(GHOST.SUE));
+		ghostMoves.put(GHOST.BLINKY, MOVE.NEUTRAL);
+		ghostMoves.put(GHOST.INKY, MOVE.NEUTRAL);
+		ghostMoves.put(GHOST.PINKY, MOVE.NEUTRAL);
+		ghostMoves.put(GHOST.SUE, MOVE.NEUTRAL);
 		
-		int leftValue = INVALID_MOVE;
-		int rightValue = INVALID_MOVE;
-		int upValue = INVALID_MOVE;
-		int downValue = INVALID_MOVE;
+		int leftValue = Integer.MIN_VALUE;
+		int rightValue = Integer.MIN_VALUE;
+		int upValue = Integer.MIN_VALUE;
+		int downValue = Integer.MIN_VALUE;
 		
 		while(!nodes.isEmpty()) {
 			Node node = nodes.removeFirst();
@@ -83,9 +86,9 @@ public class StarterPacMan extends Controller<MOVE> {
 				case NEUTRAL:
 					break;
 				}
-			} else { // head node
+			} else { // regular node
 				// prune invalid moves (neighbors)
-				MOVE[] moves = game.getPossibleMoves(game.getPacmanCurrentNodeIndex());
+				MOVE[] moves = game.getPossibleMoves(node.getGameState().getPacmanCurrentNodeIndex());
 				ArrayList<Node> neighbors = node.getNeighbors();
 				for (MOVE move : moves) {
 					if (move == MOVE.LEFT) {
@@ -101,53 +104,32 @@ public class StarterPacMan extends Controller<MOVE> {
 			}
 		}
 		
-		System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
+		//System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
 		
-		Random rand = new Random();
-		MOVE bestMove = MOVE.LEFT;
+		MOVE bestMove = MOVE.NEUTRAL;
 		int bestValue = Integer.MIN_VALUE;
-		if (leftValue != INVALID_MOVE) {
+		if (leftValue != Integer.MIN_VALUE) {
 			if (leftValue > bestValue) {
 				bestMove = MOVE.LEFT;
 				bestValue = leftValue;
-			} else if (leftValue == bestValue) {
-				if (rand.nextInt(2) == 0) {
-					bestMove = MOVE.LEFT;
-					bestValue = leftValue;
-				}
 			}
 		}
-		if (rightValue != INVALID_MOVE) {
+		if (rightValue != Integer.MIN_VALUE) {
 			if (rightValue > bestValue) {
 				bestMove = MOVE.RIGHT;
 				bestValue = rightValue;
-			} else if (rightValue == bestValue) {
-				if (rand.nextInt(2) == 0) {
-					bestMove = MOVE.RIGHT;
-					bestValue = rightValue;
-				}
 			}
 		}
-		if (upValue != INVALID_MOVE) {
+		if (upValue != Integer.MIN_VALUE) {
 			if (upValue > bestValue) {
 				bestMove = MOVE.UP;
 				bestValue = upValue;
-			} else if (upValue == bestValue) {
-				if (rand.nextInt(2) == 0) {
-					bestMove = MOVE.UP;
-					bestValue = upValue;
-				}
 			}
 		}
-		if (downValue != INVALID_MOVE) {
+		if (downValue != Integer.MIN_VALUE) {
 			if (downValue > bestValue) {
 				bestMove = MOVE.DOWN;
 				bestValue = downValue;
-			} else if (downValue == bestValue) {
-				if (rand.nextInt(2) == 0) {
-					bestMove = MOVE.DOWN;
-					bestValue = downValue;
-				}
 			}
 		}
 		
@@ -156,53 +138,58 @@ public class StarterPacMan extends Controller<MOVE> {
 	
 	/* Evaluates game state
 	 * Higher score when:
-	 * more pills eaten
-	 * more power pills eaten
-	 * more remaining lives
-	 * closer to nearest edible ghost
-	 * closer to nearest pill/power pill
+	 * score is high
+	 * number of lives is high
+	 * distance to pill is small
+	 * chasing edible ghost
+	 * running from nearby non-edible ghost
 	 */
 	int evaluateGameState(Game gameState) {
-		int heuristic = 0;
-		int pacmanIndex = gameState.getPacmanCurrentNodeIndex();
-		int[] ghostIndices = new int[] {
-			gameState.getGhostCurrentNodeIndex(GHOST.BLINKY),
-			gameState.getGhostCurrentNodeIndex(GHOST.INKY),
-			gameState.getGhostCurrentNodeIndex(GHOST.PINKY),
-			gameState.getGhostCurrentNodeIndex(GHOST.SUE)
-		};
+		int pacmanNode = gameState.getPacmanCurrentNodeIndex();
 		
+		int heuristic = 0;
+		
+		int shortestEdibleGhostDistance = Integer.MAX_VALUE;
 		int shortestGhostDistance = Integer.MAX_VALUE;
-		GHOST nearestGhost = null;
-		for (int ghostIndex : ghostIndices) {
-			int distance = gameState.getShortestPathDistance(pacmanIndex, ghostIndex);
-			if (distance < shortestGhostDistance) {
-				shortestGhostDistance = distance;
-				switch (ghostIndex) {
-				case 0:
-					nearestGhost = GHOST.BLINKY;
-					break;
-				case 1:
-					nearestGhost = GHOST.INKY;
-					break;
-				case 2:
-					nearestGhost = GHOST.PINKY;
-					break;
-				case 3:
-					nearestGhost = GHOST.SUE;
-					break;
+		
+		for (GHOST ghost : GHOST.values()) {
+			// ghost still in lair, will return -1 and skew distance results
+			if (gameState.getGhostLairTime(ghost) > 0) continue;
+			
+			int distance = gameState.getShortestPathDistance(pacmanNode,
+					gameState.getGhostCurrentNodeIndex(ghost));
+			
+			if (gameState.isGhostEdible(ghost)) {
+				if (distance < shortestEdibleGhostDistance) {
+					shortestEdibleGhostDistance = distance;
+				}
+			} else {
+				if (distance < shortestGhostDistance) {
+					shortestGhostDistance = distance;
 				}
 			}
 		}
 		
-		if (shortestGhostDistance < MIN_GHOST_DISTANCE) {
-			if (nearestGhost != null) {
-				if (gameState.isGhostEdible(nearestGhost)) {
-					heuristic += 200;
-				} else {
-					heuristic += -200;
-				}
-			}
+		//System.out.println(String.format("SGD/SEGD: %d, %d", shortestGhostDistance, shortestEdibleGhostDistance));
+		
+		if (shortestGhostDistance != Integer.MAX_VALUE && shortestGhostDistance != -1
+				&& shortestGhostDistance < MIN_GHOST_DISTANCE) {
+				// increase heuristic the farther pacman is from the nearest ghost
+				heuristic += shortestGhostDistance * 10000;
+		} else {
+			// add reward for no ghosts nearby
+			// this prevents pacman from staying near MIN_GHOST_DISTANCE to increase heuristic
+			heuristic += MIN_GHOST_DISTANCE * 10000;
+		}
+		if (shortestEdibleGhostDistance != Integer.MAX_VALUE && shortestEdibleGhostDistance != -1
+				&& shortestEdibleGhostDistance < MIN_EDIBLE_GHOST_DISTANCE) {
+			// multiplier needs to be high
+			// otherwise it might be better to be near an edible ghost than to eat it :/
+			heuristic -= shortestEdibleGhostDistance * 1300;
+		} else {
+			// decrease for no edible ghosts nearby
+			// this adds incentive to get closer to edible ghosts
+			heuristic -= MIN_EDIBLE_GHOST_DISTANCE * 1300;
 		}
 		
 		int[] activePillIndices = gameState.getActivePillsIndices();
@@ -211,16 +198,9 @@ public class StarterPacMan extends Controller<MOVE> {
 		System.arraycopy(activePillIndices, 0, pillIndices, 0, activePillIndices.length);
 		System.arraycopy(activePowerPillIndices, 0, pillIndices, activePillIndices.length, activePowerPillIndices.length);
 		
-		int shortestPillDistance = Integer.MAX_VALUE;
-		for (int pillIndex : pillIndices) {
-			int distance = gameState.getShortestPathDistance(pacmanIndex, pillIndex);
-			if (distance < shortestPillDistance) {
-				shortestPillDistance = distance;
-			}
-		}
+		int shortestPillDistance =  gameState.getShortestPathDistance(pacmanNode,
+				gameState.getClosestNodeIndexFromNodeIndex(pacmanNode, pillIndices, DM.PATH));
 		
-		return heuristic + gameState.getScore() + 
-				2000 * gameState.getPacmanNumberOfLivesRemaining() +
-				(300 - shortestPillDistance);
+		return heuristic + gameState.getScore() * 1000 + gameState.getPacmanNumberOfLivesRemaining() * 100000000 - shortestPillDistance;
 	}
 }
