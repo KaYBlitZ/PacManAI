@@ -14,11 +14,7 @@ public class Node {
 	private boolean visited;
 
 	public Node() {
-		this(MOVE.NEUTRAL);
-	}
-	
-	public Node(MOVE move) {
-		this(move, null);
+		this(MOVE.NEUTRAL, null);
 	}
 	
 	public Node(MOVE move, Node predecessor) {
