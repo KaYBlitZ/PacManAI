@@ -3,7 +3,6 @@ package pacman.controllers.examples;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedList;
-import java.util.Random;
 
 import pacman.controllers.Controller;
 import pacman.controllers.examples.move.Node;
@@ -29,22 +28,28 @@ public class StarterPacMan extends Controller<MOVE> {
 	private static final int MIN_GHOST_DISTANCE = 20;
 	private static final int MIN_EDIBLE_GHOST_DISTANCE = 100;
 	
-	public MOVE getMove(Game game, long timeDue) {
-		return getMoveBFS(game, 8);
+	private Controller<EnumMap<GHOST,MOVE>> ghosts;
+	
+	public StarterPacMan(Controller<EnumMap<GHOST,MOVE>> ghosts) {
+		this.ghosts = ghosts;
 	}
 	
-	MOVE getMoveBFS(Game game, int depth) {
+	public MOVE getMove(Game game, long timeDue) {
+		return getMoveBFS(game, timeDue, 8);
+	}
+	
+	MOVE getMoveBFS(Game game, long timeDue, int depth) {
 		Tree tree = new Tree(depth);
 		
 		LinkedList<Node> nodes = new LinkedList<Node>();
 		nodes.add(tree.getHeadNode());
 		
 		// assume ghosts are moving in same direction
-		EnumMap<GHOST, MOVE> ghostMoves = new EnumMap<GHOST, MOVE>(GHOST.class);
-		ghostMoves.put(GHOST.BLINKY, MOVE.NEUTRAL);
-		ghostMoves.put(GHOST.INKY, MOVE.NEUTRAL);
-		ghostMoves.put(GHOST.PINKY, MOVE.NEUTRAL);
-		ghostMoves.put(GHOST.SUE, MOVE.NEUTRAL);
+//		EnumMap<GHOST, MOVE> ghostMoves = new EnumMap<GHOST, MOVE>(GHOST.class);
+//		ghostMoves.put(GHOST.BLINKY, MOVE.NEUTRAL);
+//		ghostMoves.put(GHOST.INKY, MOVE.NEUTRAL);
+//		ghostMoves.put(GHOST.PINKY, MOVE.NEUTRAL);
+//		ghostMoves.put(GHOST.SUE, MOVE.NEUTRAL);
 		
 		int leftValue = Integer.MIN_VALUE;
 		int rightValue = Integer.MIN_VALUE;
@@ -56,7 +61,7 @@ public class StarterPacMan extends Controller<MOVE> {
 			if (node.getMove() != MOVE.NEUTRAL) { // regular Node
 				// set gameState and advance move based on current node
 				Game gameState = node.getPredecessor().getGameState().copy();
-				gameState.advanceGame(node.getMove(), ghostMoves);
+				gameState.advanceGame(node.getMove(), ghosts.getMove(gameState, timeDue));
 				node.setGameState(gameState);
 			} else { // must be head node
 				// set the current game state
