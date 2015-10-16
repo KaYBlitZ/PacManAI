@@ -6,6 +6,7 @@ import pacman.game.Constants.MOVE;
 
 public class Tree {
 	
+	// headNode supports the branches, has no other major function
 	private Node headNode;
 	
 	public Tree(int depth) {

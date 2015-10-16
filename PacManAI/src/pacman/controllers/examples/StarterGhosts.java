@@ -21,7 +21,7 @@ public final class StarterGhosts extends Controller<EnumMap<GHOST,MOVE>>
 	private final static float CONSISTENCY=0.9f;	//attack Ms Pac-Man with this probability
 	private final static int PILL_PROXIMITY=15;		//if Ms Pac-Man is this close to a power pill, back away
 	
-	Random rnd=new Random();
+	Random rnd=new Random(System.currentTimeMillis());
 	EnumMap<GHOST,MOVE> myMoves=new EnumMap<GHOST,MOVE>(GHOST.class);
 	
 	public EnumMap<GHOST,MOVE> getMove(Game game,long timeDue)

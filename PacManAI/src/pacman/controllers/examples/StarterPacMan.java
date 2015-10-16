@@ -25,25 +25,59 @@ import pacman.game.Game;
 public class StarterPacMan extends Controller<MOVE> {
 	// the min ghost distance needs to be balanced
 	// too large and pacman will think its trapped when its not and just jiggle in place
+	// too small and pacman will not see ghosts and get itself trapped
 	private static final int MIN_GHOST_DISTANCE = 15;
 	private static final int MIN_EDIBLE_GHOST_DISTANCE = 100;
 	
 	public MOVE getMove(Game game, long timeDue) {
-		return getMoveBFS(game, 5);
-	}
-	
-	MOVE getMoveBFS(Game game, int depth) {
-		Tree tree = new Tree(depth);
-		
-		LinkedList<Node> nodes = new LinkedList<Node>();
-		nodes.add(tree.getHeadNode());
-		
 		// assume ghosts are moving in same direction
 		EnumMap<GHOST, MOVE> ghostMoves = new EnumMap<GHOST, MOVE>(GHOST.class);
 		ghostMoves.put(GHOST.BLINKY, game.getGhostLastMoveMade(GHOST.BLINKY));
 		ghostMoves.put(GHOST.INKY, game.getGhostLastMoveMade(GHOST.INKY));
 		ghostMoves.put(GHOST.PINKY, game.getGhostLastMoveMade(GHOST.PINKY));
 		ghostMoves.put(GHOST.SUE, game.getGhostLastMoveMade(GHOST.SUE));
+		
+		//return getMoveBFS(game, ghostMoves, 5);
+		return getMoveDepthFirstSearch(game, ghostMoves, 5);
+	}
+	
+	int getBestValueDepthFirstSearch(EnumMap<GHOST, MOVE> ghostMoves, Node node) {
+		Game gameState = node.getPredecessor().getGameState().copy();
+		gameState.advanceGame(node.getMove(), ghostMoves);
+		node.setGameState(gameState);
+		
+		ArrayList<Node> neighbors = node.getNeighbors();
+		if (neighbors == null) return evaluateGameState(gameState); // end of branch return heuristic
+		
+		int bestValue = Integer.MIN_VALUE;
+		for (Node neighbor : neighbors) {
+			int value = getBestValueDepthFirstSearch(ghostMoves, neighbor);
+			if (value > bestValue) bestValue = value;
+		}
+		
+		return bestValue;
+	}
+	
+	MOVE getMoveDepthFirstSearch(Game game, EnumMap<GHOST, MOVE> ghostMoves, int depth) {
+		Tree tree = new Tree(depth);
+		tree.getHeadNode().setGameState(game);
+		ArrayList<Node> headNeighbors = tree.getHeadNode().getNeighbors();
+		
+		int leftValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(0));
+		int rightValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(1));
+		int upValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(2));
+		int downValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(3));
+		
+		System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
+		
+		return getBestMove(leftValue, rightValue, upValue, downValue);
+	}
+	
+	MOVE getMoveBFS(Game game, EnumMap<GHOST, MOVE> ghostMoves, int depth) {
+		Tree tree = new Tree(depth);
+		
+		LinkedList<Node> nodes = new LinkedList<Node>();
+		nodes.add(tree.getHeadNode());
 		
 		int leftValue = Integer.MIN_VALUE;
 		int rightValue = Integer.MIN_VALUE;
@@ -62,8 +96,7 @@ public class StarterPacMan extends Controller<MOVE> {
 				// set the current game state
 				node.setGameState(game);
 			}
-			if (node.getMove() != MOVE.NEUTRAL && node.getNeighbors() == null) {
-				// end of tree branch
+			if (node.getNeighbors() == null) { // end of tree branch
 				int value = evaluateGameState(node.getGameState());
 				// get head node move type
 				Node nodeType = node.getPredecessor();
@@ -88,44 +121,30 @@ public class StarterPacMan extends Controller<MOVE> {
 				}
 			} else { // regular node
 				// prune invalid moves (neighbors)
-				MOVE[] moves = game.getPossibleMoves(node.getGameState().getPacmanCurrentNodeIndex());
+//				MOVE[] moves = game.getPossibleMoves(node.getGameState().getPacmanCurrentNodeIndex());
+//				ArrayList<Node> neighbors = node.getNeighbors();
+//				for (MOVE move : moves) {
+//					if (move == MOVE.LEFT && !neighbors.get(0).isVisited()) {
+//						nodes.add(neighbors.get(0));
+//					} else if (move == MOVE.RIGHT && !neighbors.get(1).isVisited()) {
+//						nodes.add(neighbors.get(1));
+//					} else if (move == MOVE.UP && !neighbors.get(2).isVisited()) {
+//						nodes.add(neighbors.get(2));
+//					} else if (move == MOVE.DOWN && !neighbors.get(3).isVisited()) {
+//						nodes.add(neighbors.get(3));
+//					}
+//				}
+				// add neighbors to be searched
 				ArrayList<Node> neighbors = node.getNeighbors();
-				for (MOVE move : moves) {
-					if (move == MOVE.LEFT && !neighbors.get(0).isVisited()) {
-						nodes.add(neighbors.get(0));
-					} else if (move == MOVE.RIGHT && !neighbors.get(1).isVisited()) {
-						nodes.add(neighbors.get(1));
-					} else if (move == MOVE.UP && !neighbors.get(2).isVisited()) {
-						nodes.add(neighbors.get(2));
-					} else if (move == MOVE.DOWN && !neighbors.get(3).isVisited()) {
-						nodes.add(neighbors.get(3));
-					}
+				for (Node neighbor : neighbors) {
+					if (!neighbor.isVisited()) nodes.add(neighbor);
 				}
 			}
 		}
 		
-		MOVE bestMove = MOVE.NEUTRAL;
-		int bestValue = Integer.MIN_VALUE;
-		if (leftValue != Integer.MIN_VALUE && leftValue > bestValue) {
-			bestMove = MOVE.LEFT;
-			bestValue = leftValue;
-		}
-		if (rightValue != Integer.MIN_VALUE && rightValue > bestValue) {
-			bestMove = MOVE.RIGHT;
-			bestValue = rightValue;
-		}
-		if (upValue != Integer.MIN_VALUE && upValue > bestValue) {
-			bestMove = MOVE.UP;
-			bestValue = upValue;
-		}
-		if (downValue != Integer.MIN_VALUE && downValue > bestValue) {
-			bestMove = MOVE.DOWN;
-			bestValue = downValue;
-		}
+		//System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
 		
-		System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
-		
-		return bestMove;
+		return getBestMove(leftValue, rightValue, upValue, downValue);
 	}
 	
 	/* Evaluates game state
@@ -182,12 +201,14 @@ public class StarterPacMan extends Controller<MOVE> {
 			// this prevents pacman from staying near MIN_GHOST_DISTANCE to increase heuristic
 			heuristic += (MIN_GHOST_DISTANCE + 10) * 10000;
 		}
-		if (shortestEdibleGhostDistance != Integer.MAX_VALUE && shortestEdibleGhostDistance != -1
-				&& shortestEdibleGhostDistance < MIN_EDIBLE_GHOST_DISTANCE) {
-			// multiplier needs to be high
-			// otherwise it might be better to be near an edible ghost than to eat it :/
-			heuristic += (MIN_EDIBLE_GHOST_DISTANCE - shortestEdibleGhostDistance) * 130;
-		}
+		// comment out shortestEdibleGhostDistance code to get level completing pacman
+		// leave it to get aggressive pacman
+//		if (shortestEdibleGhostDistance != Integer.MAX_VALUE && shortestEdibleGhostDistance != -1
+//				&& shortestEdibleGhostDistance < MIN_EDIBLE_GHOST_DISTANCE) {
+//			// multiplier needs to be high
+//			// otherwise it might be better to be near an edible ghost than to eat it :/
+//			heuristic += (MIN_EDIBLE_GHOST_DISTANCE - shortestEdibleGhostDistance) * 130;
+//		}
 		// no else because there is no incentive to not be near edible ghost
 		
 		int[] activePillIndices = gameState.getActivePillsIndices();
@@ -200,5 +221,28 @@ public class StarterPacMan extends Controller<MOVE> {
 				gameState.getClosestNodeIndexFromNodeIndex(pacmanNode, pillIndices, DM.PATH));
 		
 		return heuristic + gameState.getScore() * 100 + gameState.getPacmanNumberOfLivesRemaining() * 1000000 + (200 - shortestPillDistance);
+	}
+	
+	MOVE getBestMove(int leftValue, int rightValue, int upValue, int downValue) {
+		MOVE bestMove = MOVE.NEUTRAL;
+		int bestValue = Integer.MIN_VALUE;
+		if (leftValue != Integer.MIN_VALUE && leftValue > bestValue) {
+			bestMove = MOVE.LEFT;
+			bestValue = leftValue;
+		}
+		if (rightValue != Integer.MIN_VALUE && rightValue > bestValue) {
+			bestMove = MOVE.RIGHT;
+			bestValue = rightValue;
+		}
+		if (upValue != Integer.MIN_VALUE && upValue > bestValue) {
+			bestMove = MOVE.UP;
+			bestValue = upValue;
+		}
+		if (downValue != Integer.MIN_VALUE && downValue > bestValue) {
+			bestMove = MOVE.DOWN;
+			bestValue = downValue;
+		}
+		
+		return bestMove;
 	}
 }
