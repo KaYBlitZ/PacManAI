@@ -28,6 +28,7 @@ public class StarterPacMan extends Controller<MOVE> {
 	// too small and pacman will not see ghosts and get itself trapped
 	private static final int MIN_GHOST_DISTANCE = 15;
 	private static final int MIN_EDIBLE_GHOST_DISTANCE = 100;
+	private static final int DEPTH = 5;
 	
 	public MOVE getMove(Game game, long timeDue) {
 		// assume ghosts are moving in same direction
@@ -37,9 +38,81 @@ public class StarterPacMan extends Controller<MOVE> {
 		ghostMoves.put(GHOST.PINKY, game.getGhostLastMoveMade(GHOST.PINKY));
 		ghostMoves.put(GHOST.SUE, game.getGhostLastMoveMade(GHOST.SUE));
 		
-		//return getMoveBFS(game, ghostMoves, 5);
-		//return getMoveDepthFirstSearch(game, ghostMoves, 5);
-		return getMoveIterativeDeepening(game, ghostMoves, 5);
+		//return getMoveBFS(game, ghostMoves, DEPTH);
+		//return getMoveDepthFirstSearch(game, ghostMoves, DEPTH);
+		//return getMoveIterativeDeepening(game, ghostMoves, DEPTH);
+		return getMoveHillClimber(game, ghostMoves, DEPTH);
+	}
+	
+	MOVE getMoveHillClimber(Game game, EnumMap<GHOST, MOVE> ghostMoves, int depth) {
+		Tree tree = new Tree(depth);
+		tree.getHeadNode().setGameState(game);
+		
+		boolean isMaxima = false;
+		Node maximaNode = tree.getHeadNode();
+		while (!isMaxima) {
+			int leftValue = 0, rightValue = 0, upValue = 0, downValue = 0;
+			ArrayList<Node> neighbors = maximaNode.getNeighbors();
+			if (neighbors == null) {
+				// this is the largest depth and therefore the local maxima
+				break;
+			}
+			
+			for (int i = 0; i < 4; i++) {
+				Game copy = maximaNode.getGameState().copy();
+				switch(i) {
+				case 0:
+					copy.advanceGame(MOVE.LEFT, ghostMoves);
+					leftValue = evaluateGameState(copy);
+					break;
+				case 1:
+					copy.advanceGame(MOVE.RIGHT, ghostMoves);
+					rightValue = evaluateGameState(copy);
+					break;
+				case 2:
+					copy.advanceGame(MOVE.UP, ghostMoves);
+					upValue = evaluateGameState(copy);
+					break;
+				case 3:
+					copy.advanceGame(MOVE.DOWN, ghostMoves);
+					downValue = evaluateGameState(copy);
+					break;
+				}
+				neighbors.get(i).setGameState(copy);
+			}
+			
+			int currentValue = evaluateGameState(maximaNode.getGameState());
+			
+			if (currentValue > leftValue && currentValue > rightValue &&
+					currentValue > upValue && currentValue > downValue) {
+				isMaxima = true;
+			} else {
+				if (leftValue > currentValue) {
+					currentValue = leftValue;
+					maximaNode = neighbors.get(0);
+				}
+				if (rightValue > currentValue) {
+					currentValue = rightValue;
+					maximaNode = neighbors.get(1);
+				}
+				if (upValue > currentValue) {
+					currentValue = upValue;
+					maximaNode = neighbors.get(2);
+				}
+				if (downValue > currentValue) {
+					currentValue = downValue;
+					maximaNode = neighbors.get(3);
+				}
+			}
+		}
+		
+		// currentNode is a local maxima
+		// get move to this local maxima value
+		if (maximaNode == tree.getHeadNode()) return MOVE.NEUTRAL;
+		while (maximaNode.getPredecessor().getMove() != MOVE.NEUTRAL) {
+			maximaNode = maximaNode.getPredecessor();
+		}
+		return maximaNode.getMove();
 	}
 	
 	// simulates iterative deepening; true iterative deepening is not possible
