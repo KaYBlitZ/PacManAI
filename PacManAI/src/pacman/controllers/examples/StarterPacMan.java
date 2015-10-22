@@ -38,7 +38,29 @@ public class StarterPacMan extends Controller<MOVE> {
 		ghostMoves.put(GHOST.SUE, game.getGhostLastMoveMade(GHOST.SUE));
 		
 		//return getMoveBFS(game, ghostMoves, 5);
-		return getMoveDepthFirstSearch(game, ghostMoves, 5);
+		//return getMoveDepthFirstSearch(game, ghostMoves, 5);
+		return getMoveIterativeDeepening(game, ghostMoves, 5);
+	}
+	
+	// simulates iterative deepening; true iterative deepening is not possible
+	// since we are not searching for a goal node
+	MOVE getMoveIterativeDeepening(Game game, EnumMap<GHOST, MOVE> ghostMoves, int depth) {
+		for (int i = 1; i <= depth; i++) {
+			Tree tree = new Tree(i);
+			tree.getHeadNode().setGameState(game);
+			ArrayList<Node> headNeighbors = tree.getHeadNode().getNeighbors();
+			
+			int leftValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(0));
+			int rightValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(1));
+			int upValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(2));
+			int downValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(3));
+			
+			if (i == depth) {
+				return getBestMove(leftValue, rightValue, upValue, downValue);
+			}
+		}
+		
+		return null; // should never reach this point
 	}
 	
 	int getBestValueDepthFirstSearch(EnumMap<GHOST, MOVE> ghostMoves, Node node) {
