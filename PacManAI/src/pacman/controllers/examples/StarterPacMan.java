@@ -3,6 +3,7 @@ package pacman.controllers.examples;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedList;
+import java.util.Random;
 
 import pacman.controllers.Controller;
 import pacman.controllers.examples.move.Node;
@@ -23,6 +24,10 @@ import pacman.game.Game;
  * 3. Go to the nearest pill/power pill
  */
 public class StarterPacMan extends Controller<MOVE> {
+	// for logging
+	private static final boolean LOG_TIME = true;
+	private static final boolean LOG_HEURISTICS = false;
+	
 	// the min ghost distance needs to be balanced
 	// too large and pacman will think its trapped when its not and just jiggle in place
 	// too small and pacman will not see ghosts and get itself trapped
@@ -38,11 +43,15 @@ public class StarterPacMan extends Controller<MOVE> {
 		ghostMoves.put(GHOST.PINKY, game.getGhostLastMoveMade(GHOST.PINKY));
 		ghostMoves.put(GHOST.SUE, game.getGhostLastMoveMade(GHOST.SUE));
 		
-		//return getMoveBFS(game, ghostMoves, DEPTH);
-		//return getMoveDepthFirstSearch(game, ghostMoves, DEPTH);
+		Tree tree = new Tree(DEPTH);
+		tree.getHeadNode().setGameState(game);
+		
+		//return getMoveBreadthFirstSearch(ghostMoves, tree);
+		//return getMoveDepthFirstSearch(ghostMoves, tree);
 		//return getMoveIterativeDeepening(game, ghostMoves, DEPTH);
-		//return getMoveHillClimber(game, ghostMoves, DEPTH);
-		return getMoveAlphabeta(game, ghostMoves, DEPTH);
+		//return getMoveHillClimber(ghostMoves, tree);
+		//return getMoveAlphabeta(game, ghostMoves, DEPTH);
+		return getMoveSimulatedAnnealing(ghostMoves, tree);
 	}
 	
 	int getBestHeuristicAlphabeta(Game gameState, EnumMap<GHOST, MOVE> ghostMoves, boolean maximizingPlayer, int alpha, int beta, int depth) {
@@ -86,6 +95,7 @@ public class StarterPacMan extends Controller<MOVE> {
 	MOVE getMoveAlphabeta(Game game, EnumMap<GHOST, MOVE> ghostMoves, int depth) {
 		// this is the driver function and the first maximizing step, since the
 		// player is choosing the highest value here to get the best move
+		long start = System.currentTimeMillis();
 		int leftValue = 0, rightValue = 0, upValue = 0, downValue = 0;
 		
 		for (int i = 0; i < 4; i++) {			
@@ -111,12 +121,88 @@ public class StarterPacMan extends Controller<MOVE> {
 			}
 		}
 		
+		if (LOG_TIME) System.out.println(System.currentTimeMillis() - start);
 		return getBestMove(leftValue, rightValue, upValue, downValue);
 	}
 	
-	MOVE getMoveHillClimber(Game game, EnumMap<GHOST, MOVE> ghostMoves, int depth) {
-		Tree tree = new Tree(depth);
-		tree.getHeadNode().setGameState(game);
+	/*
+	 * If heuristic is better then current node's heuristic then move to that node else only move there
+	 * with probability e^(-|deltaHeuristic|/T) where T is the temperature.
+	 * When T = 0; return MOVE leading to current node
+	 */
+	MOVE getMoveSimulatedAnnealing(EnumMap<GHOST, MOVE> ghostMoves, Tree tree) {
+		long start = System.currentTimeMillis();
+		float coolingRate = 0.97f;
+		Node currentNode = tree.getHeadNode();
+		
+		Random rand = new Random(System.currentTimeMillis());
+		int temperature = 4000000; // must initially be larger than max heuristic
+		while (temperature != 0) {
+			int currentHeuristic = evaluateGameState(currentNode.getGameState());
+			int difference;
+			if (currentNode.getPredecessor() != null) {
+				int pastHeuristic = evaluateGameState(currentNode.getPredecessor().getGameState());
+				difference = pastHeuristic - currentHeuristic;
+				if (difference > 0) {
+					// pastHeuristic is higher, go to that node
+					currentNode = currentNode.getPredecessor();
+					temperature *= coolingRate;
+					continue;
+				} else {
+					// pastHeuristic is equal or lower, go to that node if percentage is met
+					if (rand.nextFloat() < Math.exp(difference / temperature)) {
+						currentNode = currentNode.getPredecessor();
+						temperature *= coolingRate;
+						continue;
+					}
+				}
+			}
+			
+			ArrayList<Node> neighbors = currentNode.getNeighbors();	
+			if (neighbors == null) {
+				temperature *= coolingRate;
+				continue; // no neighbors; already checked predecessor; just continue
+			}
+			
+			for (Node neighbor : neighbors) {
+				Game neighborState = neighbor.getGameState();
+				if (neighborState == null) {
+					neighborState = currentNode.getGameState().copy();
+					neighborState.advanceGame(neighbor.getMove(), ghostMoves);
+					neighbor.setGameState(neighborState);
+				}
+				
+				int neighborHeuristic = evaluateGameState(neighborState);
+				difference = neighborHeuristic - currentHeuristic;
+				if (difference > 0) {
+					// neighborHeuristic is higher, go to that node
+					currentNode = neighbor;
+					temperature *= coolingRate;
+					break;
+				} else {
+					// neighborHeuristic is equal or lower, go to that node if percentage is met
+					if (rand.nextFloat() < Math.exp(difference / temperature)) {
+						currentNode = neighbor;
+						temperature *= coolingRate;
+						break;
+					}
+				}
+			}
+		}
+		
+		// currentNode may be a local maxima
+		// return move to the current node
+		if (currentNode == tree.getHeadNode()) return MOVE.NEUTRAL;
+		while (currentNode.getPredecessor().getMove() != MOVE.NEUTRAL) {
+			currentNode = currentNode.getPredecessor();
+		}
+		
+		if (LOG_TIME) System.out.println(System.currentTimeMillis() - start);
+		return currentNode.getMove();
+	}
+	
+	MOVE getMoveHillClimber(EnumMap<GHOST, MOVE> ghostMoves, Tree tree) {
+		long start = System.currentTimeMillis();
 		
 		boolean isMaxima = false;
 		Node maximaNode = tree.getHeadNode();
@@ -182,12 +268,15 @@ public class StarterPacMan extends Controller<MOVE> {
 		while (maximaNode.getPredecessor().getMove() != MOVE.NEUTRAL) {
 			maximaNode = maximaNode.getPredecessor();
 		}
+		
+		if (LOG_TIME) System.out.println(System.currentTimeMillis() - start);
 		return maximaNode.getMove();
 	}
 	
 	// simulates iterative deepening; true iterative deepening is not possible
 	// since we are not searching for a goal node
 	MOVE getMoveIterativeDeepening(Game game, EnumMap<GHOST, MOVE> ghostMoves, int depth) {
+		long start = System.currentTimeMillis();
 		for (int i = 1; i <= depth; i++) {
 			Tree tree = new Tree(i);
 			tree.getHeadNode().setGameState(game);
@@ -199,6 +288,7 @@ public class StarterPacMan extends Controller<MOVE> {
 			int downValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(3));
 			
 			if (i == depth) {
+				if (LOG_TIME) System.out.println(System.currentTimeMillis() - start);
 				return getBestMove(leftValue, rightValue, upValue, downValue);
 			}
 		}
@@ -223,9 +313,8 @@ public class StarterPacMan extends Controller<MOVE> {
 		return bestValue;
 	}
 	
-	MOVE getMoveDepthFirstSearch(Game game, EnumMap<GHOST, MOVE> ghostMoves, int depth) {
-		Tree tree = new Tree(depth);
-		tree.getHeadNode().setGameState(game);
+	MOVE getMoveDepthFirstSearch(EnumMap<GHOST, MOVE> ghostMoves, Tree tree) {
+		long start = System.currentTimeMillis();
 		ArrayList<Node> headNeighbors = tree.getHeadNode().getNeighbors();
 		
 		int leftValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(0));
@@ -233,12 +322,12 @@ public class StarterPacMan extends Controller<MOVE> {
 		int upValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(2));
 		int downValue = getBestValueDepthFirstSearch(ghostMoves, headNeighbors.get(3));
 		
+		if (LOG_TIME) System.out.println(System.currentTimeMillis() - start);
 		return getBestMove(leftValue, rightValue, upValue, downValue);
 	}
 	
-	MOVE getMoveBFS(Game game, EnumMap<GHOST, MOVE> ghostMoves, int depth) {
-		Tree tree = new Tree(depth);
-		
+	MOVE getMoveBreadthFirstSearch(EnumMap<GHOST, MOVE> ghostMoves, Tree tree) {
+		long start = System.currentTimeMillis();
 		LinkedList<Node> nodes = new LinkedList<Node>();
 		nodes.add(tree.getHeadNode());
 		
@@ -250,14 +339,11 @@ public class StarterPacMan extends Controller<MOVE> {
 		while(!nodes.isEmpty()) {
 			Node node = nodes.removeFirst();
 			node.setVisited(true);
-			if (node.getMove() != MOVE.NEUTRAL) { // regular Node
+			if (node.getPredecessor() != null) { // regular Node
 				// set gameState and advance move based on current node
 				Game gameState = node.getPredecessor().getGameState().copy();
 				gameState.advanceGame(node.getMove(), ghostMoves);
 				node.setGameState(gameState);
-			} else { // must be head node
-				// set the current game state
-				node.setGameState(game);
 			}
 			if (node.getNeighbors() == null) { // end of tree branch
 				int value = evaluateGameState(node.getGameState());
@@ -283,20 +369,6 @@ public class StarterPacMan extends Controller<MOVE> {
 					break;
 				}
 			} else { // regular node
-				// prune invalid moves (neighbors)
-//				MOVE[] moves = game.getPossibleMoves(node.getGameState().getPacmanCurrentNodeIndex());
-//				ArrayList<Node> neighbors = node.getNeighbors();
-//				for (MOVE move : moves) {
-//					if (move == MOVE.LEFT && !neighbors.get(0).isVisited()) {
-//						nodes.add(neighbors.get(0));
-//					} else if (move == MOVE.RIGHT && !neighbors.get(1).isVisited()) {
-//						nodes.add(neighbors.get(1));
-//					} else if (move == MOVE.UP && !neighbors.get(2).isVisited()) {
-//						nodes.add(neighbors.get(2));
-//					} else if (move == MOVE.DOWN && !neighbors.get(3).isVisited()) {
-//						nodes.add(neighbors.get(3));
-//					}
-//				}
 				// add neighbors to be searched
 				ArrayList<Node> neighbors = node.getNeighbors();
 				for (Node neighbor : neighbors) {
@@ -305,8 +377,7 @@ public class StarterPacMan extends Controller<MOVE> {
 			}
 		}
 		
-		//System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
-		
+		if (LOG_TIME) System.out.println(System.currentTimeMillis() - start);
 		return getBestMove(leftValue, rightValue, upValue, downValue);
 	}
 	
@@ -387,7 +458,7 @@ public class StarterPacMan extends Controller<MOVE> {
 	}
 	
 	MOVE getBestMove(int leftValue, int rightValue, int upValue, int downValue) {
-		//System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
+		if (LOG_HEURISTICS) System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
 		
 		MOVE bestMove = MOVE.NEUTRAL;
 		int bestValue = Integer.MIN_VALUE;
