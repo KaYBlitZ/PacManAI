@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedList;
 
-import pacman.controllers.examples.StarterPacMan;
 import pacman.controllers.examples.move.Node;
 import pacman.controllers.examples.move.Tree;
 import pacman.game.Constants.GHOST;
@@ -32,7 +31,7 @@ public class BreadthFirstSearch {
 				node.setGameState(gameState);
 			}
 			if (node.getNeighbors() == null) { // end of tree branch
-				int value = StarterPacMan.evaluateGameState(node.getGameState());
+				int value = Evaluation.evaluateGameState(node.getGameState());
 				// get head node move type
 				Node nodeType = node.getPredecessor();
 				while (nodeType.getPredecessor().getMove() != MOVE.NEUTRAL) {
@@ -63,7 +62,7 @@ public class BreadthFirstSearch {
 			}
 		}
 		
-		if (StarterPacMan.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
-		return StarterPacMan.getBestMove(leftValue, rightValue, upValue, downValue);
+		if (Evaluation.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
+		return Evaluation.getBestMove(leftValue, rightValue, upValue, downValue);
 	}
 }

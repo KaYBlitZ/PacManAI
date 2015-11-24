@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.Random;
 
-import pacman.controllers.examples.StarterPacMan;
 import pacman.controllers.examples.move.Node;
 import pacman.controllers.examples.move.Tree;
 import pacman.game.Constants.GHOST;
@@ -25,10 +24,10 @@ public class SimulatedAnnealing {
 		Random rand = new Random(System.currentTimeMillis());
 		int temperature = 4000000; // must initially be larger than max heuristic
 		while (temperature != 0) {
-			int currentHeuristic = StarterPacMan.evaluateGameState(currentNode.getGameState());
+			int currentHeuristic = Evaluation.evaluateGameState(currentNode.getGameState());
 			int difference;
 			if (currentNode.getPredecessor() != null) {
-				int pastHeuristic = StarterPacMan.evaluateGameState(currentNode.getPredecessor().getGameState());
+				int pastHeuristic = Evaluation.evaluateGameState(currentNode.getPredecessor().getGameState());
 				difference = pastHeuristic - currentHeuristic;
 				if (difference > 0) {
 					// pastHeuristic is higher, go to that node
@@ -59,7 +58,7 @@ public class SimulatedAnnealing {
 					neighbor.setGameState(neighborState);
 				}
 				
-				int neighborHeuristic = StarterPacMan.evaluateGameState(neighborState);
+				int neighborHeuristic = Evaluation.evaluateGameState(neighborState);
 				difference = neighborHeuristic - currentHeuristic;
 				if (difference > 0) {
 					// neighborHeuristic is higher, go to that node
@@ -84,7 +83,7 @@ public class SimulatedAnnealing {
 			currentNode = currentNode.getPredecessor();
 		}
 		
-		if (StarterPacMan.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
+		if (Evaluation.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
 		return currentNode.getMove();
 	}
 }

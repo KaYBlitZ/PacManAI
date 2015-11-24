@@ -4,7 +4,6 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.PriorityQueue;
 
-import pacman.controllers.examples.StarterPacMan;
 import pacman.controllers.examples.move.Node;
 import pacman.game.Constants.GHOST;
 import pacman.game.Constants.MOVE;
@@ -81,7 +80,7 @@ public class EvolutionStrategy {
 			}
 		}
 		
-		if (StarterPacMan.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
+		if (Evaluation.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
 		return population.peek().getMove();
 	}
 	
@@ -89,8 +88,8 @@ public class EvolutionStrategy {
 		// higher heuristic values get higher priority
 		@Override
 		public int compare(Node firstNode, Node secondNode) {
-			int firstHeuristic = StarterPacMan.evaluateGameState(firstNode.getGameState());
-			int secondHeuristic = StarterPacMan.evaluateGameState(secondNode.getGameState());
+			int firstHeuristic = Evaluation.evaluateGameState(firstNode.getGameState());
+			int secondHeuristic = Evaluation.evaluateGameState(secondNode.getGameState());
 			
 			if (firstHeuristic < secondHeuristic) {
 				return 1;

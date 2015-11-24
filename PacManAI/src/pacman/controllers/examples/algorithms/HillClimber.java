@@ -3,7 +3,6 @@ package pacman.controllers.examples.algorithms;
 import java.util.ArrayList;
 import java.util.EnumMap;
 
-import pacman.controllers.examples.StarterPacMan;
 import pacman.controllers.examples.move.Node;
 import pacman.controllers.examples.move.Tree;
 import pacman.game.Constants.GHOST;
@@ -29,25 +28,25 @@ public class HillClimber {
 				switch(i) {
 				case 0:
 					copy.advanceGame(MOVE.LEFT, ghostMoves);
-					leftValue = StarterPacMan.evaluateGameState(copy);
+					leftValue = Evaluation.evaluateGameState(copy);
 					break;
 				case 1:
 					copy.advanceGame(MOVE.RIGHT, ghostMoves);
-					rightValue = StarterPacMan.evaluateGameState(copy);
+					rightValue = Evaluation.evaluateGameState(copy);
 					break;
 				case 2:
 					copy.advanceGame(MOVE.UP, ghostMoves);
-					upValue = StarterPacMan.evaluateGameState(copy);
+					upValue = Evaluation.evaluateGameState(copy);
 					break;
 				case 3:
 					copy.advanceGame(MOVE.DOWN, ghostMoves);
-					downValue = StarterPacMan.evaluateGameState(copy);
+					downValue = Evaluation.evaluateGameState(copy);
 					break;
 				}
 				neighbors.get(i).setGameState(copy);
 			}
 			
-			int currentValue = StarterPacMan.evaluateGameState(maximaNode.getGameState());
+			int currentValue = Evaluation.evaluateGameState(maximaNode.getGameState());
 			
 			if (currentValue > leftValue && currentValue > rightValue &&
 					currentValue > upValue && currentValue > downValue) {
@@ -79,7 +78,7 @@ public class HillClimber {
 			maximaNode = maximaNode.getPredecessor();
 		}
 		
-		if (StarterPacMan.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
+		if (Evaluation.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
 		return maximaNode.getMove();
 	}
 }

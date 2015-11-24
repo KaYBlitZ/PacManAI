@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.Random;
 
-import pacman.controllers.examples.StarterPacMan;
 import pacman.game.Constants.GHOST;
 import pacman.game.Constants.MOVE;
 import pacman.game.Game;
@@ -46,7 +45,7 @@ public class GeneticAlgorithm {
 			}
 		}
 		Collections.sort(population, comparator);
-		if (StarterPacMan.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
+		if (Evaluation.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
 		return population.get(0).moves[0]; // return best genetic move's first move
 	}
 	
@@ -66,14 +65,14 @@ public class GeneticAlgorithm {
 				for (MOVE move : firstMove.moves) {
 					copy.advanceGame(move, ghostMoves);
 				}
-				firstMove.heuristic = StarterPacMan.evaluateGameState(copy);
+				firstMove.heuristic = Evaluation.evaluateGameState(copy);
 			}
 			if (secondMove.heuristic == -1) {
 				Game copy = gameState.copy();
 				for (MOVE move : secondMove.moves) {
 					copy.advanceGame(move, ghostMoves);
 				}
-				secondMove.heuristic = StarterPacMan.evaluateGameState(copy);
+				secondMove.heuristic = Evaluation.evaluateGameState(copy);
 			}
 			if (firstMove.heuristic < secondMove.heuristic) {
 				return 1;

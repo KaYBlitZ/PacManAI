@@ -2,14 +2,13 @@ package pacman.controllers.examples.algorithms;
 
 import java.util.EnumMap;
 
-import pacman.controllers.examples.StarterPacMan;
 import pacman.game.Constants.GHOST;
 import pacman.game.Constants.MOVE;
 import pacman.game.Game;
 
 public class Alphabeta {
 	int getBestHeuristicAlphabeta(Game gameState, EnumMap<GHOST, MOVE> ghostMoves, boolean maximizingPlayer, int alpha, int beta, int depth) {
-		if (depth == 0) return StarterPacMan.evaluateGameState(gameState);
+		if (depth == 0) return Evaluation.evaluateGameState(gameState);
 		
 		for (int i = 0; i < 4; i++) {			
 			Game copy = gameState.copy();
@@ -75,7 +74,7 @@ public class Alphabeta {
 			}
 		}
 		
-		if (StarterPacMan.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
-		return StarterPacMan.getBestMove(leftValue, rightValue, upValue, downValue);
+		if (Evaluation.LOG_TIME) System.out.println(System.currentTimeMillis() - start);
+		return Evaluation.getBestMove(leftValue, rightValue, upValue, downValue);
 	}
 }
