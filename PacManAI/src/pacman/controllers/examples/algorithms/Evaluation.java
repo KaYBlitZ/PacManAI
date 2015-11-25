@@ -13,9 +13,9 @@ public class Evaluation {
 	// the min ghost distance needs to be balanced
 	// too large and pacman will think its trapped when its not and just jiggle in place
 	// too small and pacman will not see ghosts and get itself trapped
-	private static final int MIN_GHOST_DISTANCE = 15;
+	private static final int MIN_GHOST_DISTANCE = 20;
 	private static final int MIN_EDIBLE_GHOST_DISTANCE = 100;
-	private static final int DEPTH = 5;
+	public static final int DEPTH = 5;
 	
 	/* Evaluates game state
 	 * Higher score when:
@@ -90,7 +90,7 @@ public class Evaluation {
 		int shortestPillDistance =  gameState.getShortestPathDistance(pacmanNode,
 				gameState.getClosestNodeIndexFromNodeIndex(pacmanNode, pillIndices, DM.PATH));
 		
-		return heuristic + gameState.getScore() * 100 + gameState.getPacmanNumberOfLivesRemaining() * 1000000 + (200 - shortestPillDistance);
+		return heuristic + gameState.getScore() * 100 + gameState.getPacmanNumberOfLivesRemaining() * 10000000 + (200 - shortestPillDistance);
 	}
 	
 	public static MOVE getBestMove(int leftValue, int rightValue, int upValue, int downValue) {

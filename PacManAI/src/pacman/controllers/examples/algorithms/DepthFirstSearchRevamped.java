@@ -5,11 +5,11 @@ import java.util.EnumMap;
 
 import pacman.controllers.examples.move.Node;
 import pacman.controllers.examples.move.Tree;
+import pacman.game.Game;
 import pacman.game.Constants.GHOST;
 import pacman.game.Constants.MOVE;
-import pacman.game.Game;
 
-public class DepthFirstSearch {
+public class DepthFirstSearchRevamped {
 	public MOVE getMove(EnumMap<GHOST, MOVE> ghostMoves, Tree tree) {
 		long start = System.currentTimeMillis();
 		ArrayList<Node> headNeighbors = tree.getHeadNode().getNeighbors();
@@ -25,6 +25,9 @@ public class DepthFirstSearch {
 	
 	public int getBestValue(EnumMap<GHOST, MOVE> ghostMoves, Node node) {
 		Game gameState = node.getPredecessor().getGameState().copy();
+		if (!isValidMove(gameState.getPossibleMoves(gameState.getPacmanCurrentNodeIndex()), node.getMove()))
+			return Integer.MIN_VALUE;
+		
 		gameState.advanceGame(node.getMove(), ghostMoves);
 		node.setGameState(gameState);
 		
@@ -38,5 +41,12 @@ public class DepthFirstSearch {
 		}
 		
 		return bestValue;
+	}
+	
+	boolean isValidMove(MOVE[] validMoves, MOVE move) {
+		for (MOVE validMove : validMoves) {
+			if (move == validMove) return true;
+		}
+		return false;
 	}
 }

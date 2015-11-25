@@ -33,7 +33,7 @@ public class IterativeDeepening {
 		return null; // should never reach this point
 	}
 	
-	public static int getBestValue(EnumMap<GHOST, MOVE> ghostMoves, Node node) {
+	public int getBestValue(EnumMap<GHOST, MOVE> ghostMoves, Node node) {
 		Game gameState = node.getPredecessor().getGameState().copy();
 		gameState.advanceGame(node.getMove(), ghostMoves);
 		node.setGameState(gameState);

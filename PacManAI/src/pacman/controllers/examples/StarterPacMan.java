@@ -6,6 +6,8 @@ import pacman.controllers.Controller;
 import pacman.controllers.examples.algorithms.Alphabeta;
 import pacman.controllers.examples.algorithms.BreadthFirstSearch;
 import pacman.controllers.examples.algorithms.DepthFirstSearch;
+import pacman.controllers.examples.algorithms.DepthFirstSearchRevamped;
+import pacman.controllers.examples.algorithms.Evaluation;
 import pacman.controllers.examples.algorithms.EvolutionStrategy;
 import pacman.controllers.examples.algorithms.GeneticAlgorithm;
 import pacman.controllers.examples.algorithms.HillClimber;
@@ -31,17 +33,6 @@ import pacman.game.Game;
  * 3. Go to the nearest pill/power pill
  */
 public class StarterPacMan extends Controller<MOVE> {
-	// for logging
-	public static final boolean LOG_TIME = true;
-	private static final boolean LOG_HEURISTICS = false;
-	
-	// the min ghost distance needs to be balanced
-	// too large and pacman will think its trapped when its not and just jiggle in place
-	// too small and pacman will not see ghosts and get itself trapped
-	private static final int MIN_GHOST_DISTANCE = 15;
-	private static final int MIN_EDIBLE_GHOST_DISTANCE = 100;
-	private static final int DEPTH = 5;
-	
 	// algorithms
 	private Alphabeta alphabeta;
 	private BreadthFirstSearch breadthFirstSearch;
@@ -55,6 +46,7 @@ public class StarterPacMan extends Controller<MOVE> {
 	private Perceptron perceptron;
 	private ID3Algorithm id3Algorithm;
 	private QLearning qLearning;
+	private DepthFirstSearchRevamped depthFirstSearchRevamped;
 	
 	public StarterPacMan() {
 		alphabeta = new Alphabeta();
@@ -69,6 +61,7 @@ public class StarterPacMan extends Controller<MOVE> {
 		perceptron = new Perceptron();
 		id3Algorithm = new ID3Algorithm();
 		qLearning = new QLearning();
+		depthFirstSearchRevamped = new DepthFirstSearchRevamped();
 	}
 	
 	public MOVE getMove(Game game, long timeDue) {
@@ -79,7 +72,7 @@ public class StarterPacMan extends Controller<MOVE> {
 		ghostMoves.put(GHOST.PINKY, game.getGhostLastMoveMade(GHOST.PINKY));
 		ghostMoves.put(GHOST.SUE, game.getGhostLastMoveMade(GHOST.SUE));
 		
-		Tree tree = new Tree(DEPTH);
+		Tree tree = new Tree(Evaluation.DEPTH);
 		tree.getHeadNode().setGameState(game);
 		
 		//return breadthFirstSearch.getMove(ghostMoves, tree);
@@ -91,6 +84,7 @@ public class StarterPacMan extends Controller<MOVE> {
 		//return evolutionStrategy.getMove(game, ghostMoves, DEPTH);
 		//return geneticAlgorithm.getMove(game, ghostMoves, DEPTH);
 		//return kNearestNeighbor.getMove(DEPTH);
-		return perceptron.getMove(game, ghostMoves, DEPTH);
+		//return perceptron.getMove(game, ghostMoves, DEPTH);
+		return depthFirstSearchRevamped.getMove(ghostMoves, tree);
 	}
 }
