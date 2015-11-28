@@ -57,10 +57,10 @@ public class Evaluation {
 		
 		if (shortestGhostDistance != Integer.MAX_VALUE && shortestGhostDistance != -1
 				&& shortestGhostDistance < MIN_GHOST_DISTANCE) {
-			if (secondShortestGhostDistance != Integer.MAX_VALUE && secondShortestGhostDistance != 1
+			if (secondShortestGhostDistance != Integer.MAX_VALUE && secondShortestGhostDistance != -1
 					&& secondShortestGhostDistance < MIN_GHOST_DISTANCE) {
 				// increase heuristic the farther pacman is from the average of the two nearest ghost
-				float avgGhostDistance = (shortestGhostDistance + secondShortestGhostDistance) / 2f;
+				int avgGhostDistance = (shortestGhostDistance + secondShortestGhostDistance) / 2;
 				heuristic += avgGhostDistance * 10000;
 			} else {
 				// increase heuristic the farther pacman is from the nearest ghost
@@ -94,7 +94,11 @@ public class Evaluation {
 	}
 	
 	public static MOVE getBestMove(int leftValue, int rightValue, int upValue, int downValue) {
-		if (LOG_HEURISTICS) System.out.println(String.format("L/R/U/D: %d, %d, %d, %d", leftValue, rightValue, upValue, downValue));
+		if (LOG_HEURISTICS) System.out.println(String.format("L/R/U/D: %s, %s, %s, %s", 
+				leftValue == Integer.MIN_VALUE ? "x" : String.valueOf(leftValue), 
+				rightValue == Integer.MIN_VALUE ? "x" : String.valueOf(rightValue), 
+				upValue == Integer.MIN_VALUE ? "x" : String.valueOf(upValue), 
+				downValue == Integer.MIN_VALUE ? "x" : String.valueOf(downValue)));
 		
 		MOVE bestMove = MOVE.NEUTRAL;
 		int bestValue = Integer.MIN_VALUE;
