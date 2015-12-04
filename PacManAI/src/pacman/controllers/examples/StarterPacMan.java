@@ -3,6 +3,7 @@ package pacman.controllers.examples;
 import java.util.EnumMap;
 
 import pacman.controllers.Controller;
+import pacman.controllers.examples.algorithms.AStar;
 import pacman.controllers.examples.algorithms.Alphabeta;
 import pacman.controllers.examples.algorithms.BreadthFirstSearch;
 import pacman.controllers.examples.algorithms.DepthFirstSearch;
@@ -46,6 +47,7 @@ public class StarterPacMan extends Controller<MOVE> {
 	private Perceptron perceptron;
 	private ID3Algorithm id3Algorithm;
 	private QLearning qLearning;
+	private AStar aStar;
 	private DepthFirstSearchRevamped depthFirstSearchRevamped;
 	
 	public StarterPacMan() {
@@ -61,6 +63,7 @@ public class StarterPacMan extends Controller<MOVE> {
 		perceptron = new Perceptron();
 		id3Algorithm = new ID3Algorithm();
 		qLearning = new QLearning();
+		aStar = new AStar(Evaluation.DEPTH);
 		depthFirstSearchRevamped = new DepthFirstSearchRevamped();
 	}
 	
@@ -77,14 +80,15 @@ public class StarterPacMan extends Controller<MOVE> {
 		
 		//return breadthFirstSearch.getMove(ghostMoves, tree);
 		//return depthFirstSearch.getMove(ghostMoves, tree);
-		//return iterativeDeepening.getMove(game, ghostMoves, DEPTH);
+		//return iterativeDeepening.getMove(game, ghostMoves, Evaluation.DEPTH);
 		//return hillClimber.getMove(ghostMoves, tree);
-		//return alphabeta.getMove(game, ghostMoves, DEPTH);
+		//return alphabeta.getMove(game, ghostMoves, Evaluation.DEPTH);
 		//return simulatedAnnealing.getMove(ghostMoves, tree);
-		//return evolutionStrategy.getMove(game, ghostMoves, DEPTH);
-		//return geneticAlgorithm.getMove(game, ghostMoves, DEPTH);
-		//return kNearestNeighbor.getMove(DEPTH);
-		//return perceptron.getMove(game, ghostMoves, DEPTH);
+		//return evolutionStrategy.getMove(game, ghostMoves, Evaluation.DEPTH);
+		//return geneticAlgorithm.getMove(game, ghostMoves, Evaluation.DEPTH);
+		//return kNearestNeighbor.getMove(Evaluation.DEPTH);
+		//return perceptron.getMove(game, ghostMoves, Evaluation.DEPTH);
+		//return aStar.getMove(game, ghostMoves);
 		return depthFirstSearchRevamped.getMove(ghostMoves, tree);
 	}
 }

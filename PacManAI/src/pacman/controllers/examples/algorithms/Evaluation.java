@@ -9,13 +9,14 @@ public class Evaluation {
 	// for logging
 	public static final boolean LOG_TIME = true;
 	private static final boolean LOG_HEURISTICS = false;
+	private static final boolean ACTIVATE_SCORE_HEURISTIC = true; // if true Pac-Man goes for high score than level completion
 	
 	// the min ghost distance needs to be balanced
 	// too large and pacman will think its trapped when its not and just jiggle in place
 	// too small and pacman will not see ghosts and get itself trapped
 	private static final int MIN_GHOST_DISTANCE = 20;
 	private static final int MIN_EDIBLE_GHOST_DISTANCE = 100;
-	public static final int DEPTH = 5;
+	public static final int DEPTH = 7;
 	
 	/* Evaluates game state
 	 * Higher score when:
@@ -73,13 +74,15 @@ public class Evaluation {
 		}
 		// comment out shortestEdibleGhostDistance code to get level completing pacman
 		// leave it to get aggressive pacman
-//		if (shortestEdibleGhostDistance != Integer.MAX_VALUE && shortestEdibleGhostDistance != -1
-//				&& shortestEdibleGhostDistance < MIN_EDIBLE_GHOST_DISTANCE) {
-//			// multiplier needs to be high
-//			// otherwise it might be better to be near an edible ghost than to eat it :/
-//			heuristic += (MIN_EDIBLE_GHOST_DISTANCE - shortestEdibleGhostDistance) * 130;
-//		}
-		// no else because there is no incentive to not be near edible ghost
+		if (ACTIVATE_SCORE_HEURISTIC) {
+			if (shortestEdibleGhostDistance != Integer.MAX_VALUE && shortestEdibleGhostDistance != -1
+					&& shortestEdibleGhostDistance < MIN_EDIBLE_GHOST_DISTANCE) {
+				// multiplier needs to be high
+				// otherwise it might be better to be near an edible ghost than to eat it :/
+				heuristic += (MIN_EDIBLE_GHOST_DISTANCE - shortestEdibleGhostDistance) * 130;
+			}
+			// no else because there is no incentive to not be near edible ghost
+		}
 		
 		int[] activePillIndices = gameState.getActivePillsIndices();
 		int[] activePowerPillIndices = gameState.getActivePowerPillsIndices();
